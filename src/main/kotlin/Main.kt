@@ -11,7 +11,7 @@ fun main() {
 
     // get output stream
     val buffer = clientSocket.getOutputStream()
-    val response = "HTTP/1.1 200 OK\\r\\n\\r\\n\n"
+    val response = "HTTP/1.1 200 OK\r\n\r\n"
     buffer.write(response.toByteArray())
     buffer.flush()
     buffer.close()
