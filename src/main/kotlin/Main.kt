@@ -16,13 +16,15 @@ fun main() {
         val splitline = line.split(' ')
 
         val path = splitline[1]
-        if (path == "/") {
-            val response = "HTTP/1.1 200 OK\r\n\r\n"
-            outputStream.write(response.toByteArray())
-        } else {
-            val response = "HTTP/1.1 404 Not Found\r\n\r\n"
-            outputStream.write(response.toByteArray())
+        val response = when {
+            path == "/" -> "HTTP/1.1 200 OK\r\n\r\n"
+            path.startsWith("/echo/") -> {
+                val str = path.substringAfter("/echo/")
+                "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: ${str.length}\r\n\r\n${str}"
+            }
+            else -> "HTTP/1.1 404 Not Found\r\n\r\n"
         }
+        outputStream.write(response.toByteArray())
         outputStream.flush()
         outputStream.close()
     }
