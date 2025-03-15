@@ -8,12 +8,22 @@ fun main() {
 
     // wait for clients
     val clientSocket = serverSocket.accept()
-
     // get output stream
-    val buffer = clientSocket.getOutputStream()
-    val response = "HTTP/1.1 200 OK\r\n\r\n"
-    buffer.write(response.toByteArray())
-    buffer.flush()
-    buffer.close()
-    println(response)
+    val outputStream = clientSocket.getOutputStream()
+    val inputStream = clientSocket.getInputStream()
+    inputStream.bufferedReader().use {
+        val line = it.readLine()
+        val splitline = line.split(' ')
+
+        val path = splitline[1]
+        if (path == "/") {
+            val response = "HTTP/1.1 200 OK\r\n\r\n"
+            outputStream.write(response.toByteArray())
+        } else {
+            val response = "HTTP/1.1 404 Not Found\r\n\r\n"
+            outputStream.write(response.toByteArray())
+        }
+        outputStream.flush()
+        outputStream.close()
+    }
 }
