@@ -2,7 +2,7 @@
 const val CRLF_CONST = "\r\n"
 
 object HttpCodes {
-    const val HTTP_200 =  "HTTP/1.1 200 OK\r\n\r\n"
+    const val HTTP_200 =  "HTTP/1.1 200 OK"
     const val HTTP_404 =  "HTTP/1.1 404 Not Found"
 }
 

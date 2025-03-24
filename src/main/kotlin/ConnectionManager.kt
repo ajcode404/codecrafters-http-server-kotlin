@@ -3,20 +3,24 @@ import java.net.Socket
 import kotlin.concurrent.thread
 
 class ConnectionManager {
+    private var serverSocket = ServerSocket(4221)
+    init {
+        serverSocket.reuseAddress = true
+        serverSocket.receiveBufferSize
 
-    // register a socket connection
-//    private val clientConnections = mutableListOf<Socket>()
-
-    private val serverSocket = ServerSocket(4221).apply {
-        reuseAddress = true
-        receiveBufferSize
     }
 
     fun run() {
         while (true) {
             val clientSocket = serverSocket.accept()
             thread {
-                RequestHandler(clientSocket).handle()
+                val handler = RequestHandler(clientSocket)
+                val response = handler.handle()
+                val os = handler.clientSocket.outputStream
+                os.write(response.toByteArray())
+                os.flush()
+                os.close()
+                println(response)
             }
         }
     }
@@ -38,14 +42,11 @@ data class Request(
 }
 
 class RequestHandler(
-    clientSocket: Socket
+    val clientSocket: Socket
 ) {
 
-    private val inputStream = clientSocket.getInputStream()
-    private val outputStream = clientSocket.getOutputStream()
-
-    fun handle() {
-        inputStream.bufferedReader().use {
+    fun handle(): String {
+        clientSocket.inputStream.bufferedReader().use {
             var line: String? = it.readLine()
             val list = mutableListOf<String>()
             while (line != null && list.size < 4) {
@@ -53,14 +54,18 @@ class RequestHandler(
                 line = it.readLine()
             }
             val request = Request(list)
-            handleResponse(request)
+            return handleResponse(request)
         }
     }
 
-    private fun handleResponse(request: Request) {
+    private fun handleResponse(request: Request): String {
         val path = request.getPath()
+        // println("path = $path")
         val resp = when {
-            path == "/"  -> HttpCodes.HTTP_200
+            path == "/"  -> {
+                // println("Hit here")
+                "HTTP/1.1 200 OK\r\n\r\n"
+            }
             path.startsWith("/echo/") -> {
                 val str = path.substringAfter("/echo/")
                 buildString {
@@ -75,8 +80,6 @@ class RequestHandler(
             }
             else -> "${HttpCodes.HTTP_404}$CRLF_CONST$CRLF_CONST"
         }
-        outputStream.write(resp.toByteArray())
-        outputStream.flush()
-        outputStream.close()
+        return resp
     }
 }

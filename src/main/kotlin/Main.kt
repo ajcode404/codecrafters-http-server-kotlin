@@ -2,15 +2,17 @@ import java.net.ServerSocket
 
 fun main() {
     println("Logs from your program will appear here!")
-//    val serverSocket = ServerSocket(4221)
-//    serverSocket.reuseAddress = true
-//    serverSocket.receiveBufferSize
-
+    var serverSocket = ServerSocket(4221)
+    serverSocket.reuseAddress = true
+    serverSocket.receiveBufferSize
     // wait for clients
-    ConnectionManager().run()
-//    val clientSocket = serverSocket.accept()
-//
-//    // get output stream
-//    val requestHandler = RequestHandler(clientSocket)
-//    requestHandler.handle()
+    val clientSocket = serverSocket.accept()
+    RequestHandler(clientSocket).handle()
+    // get output stream
+//    val buffer = clientSocket.getOutputStream()
+//    val response = "HTTP/1.1 200 OK\r\n\r\n"
+//    buffer.write(response.toByteArray())
+//    buffer.flush()
+//    buffer.close()
+//    println(response)
 }
