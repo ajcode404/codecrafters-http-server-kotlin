@@ -1,4 +1,6 @@
+import java.io.InputStream
 import java.net.ServerSocket
+import java.net.SocketTimeoutException
 
 
 const val CRLF = "\r\n"
@@ -18,9 +20,43 @@ object HttpHeader {
 }
 
 
+class Request(
+    inputStream: InputStream
+) {
+
+    private val buf = StringBuilder()
+
+    private var requestLine: String? = null
+
+    private var body = ""
+
+    private val headers = mutableMapOf<String, String>()
+
+    init {
+        inputStream.bufferedReader().lineSequence().iterator().run {
+            kotlin.runCatching {
+                requestLine = next()
+                while (hasNext()) {
+                    val line = next()
+                    if (line.isEmpty()) {
+                        break
+                    }
+                    val name = line.substringBefore(":").lowercase()
+                    val value = line.substringAfter(":").trim()
+                    headers[name] = value
+                }
+            }.onFailure {
+                if (it is SocketTimeoutException) {
+                    body = buf.toString()
+                }
+            }
+        }
+    }
+}
+
 fun main() {
     println("Logs from your program will appear here!")
-    var serverSocket = ServerSocket(4221)
+    val serverSocket = ServerSocket(4221)
     serverSocket.reuseAddress = true
     serverSocket.receiveBufferSize
 
@@ -29,9 +65,10 @@ fun main() {
     // get output stream
     val outputStream = clientSocket.getOutputStream()
     val inputStream = clientSocket.getInputStream()
+
     inputStream.bufferedReader().use {
         val line = it.readLine()
-        val splitline = line.split(' ')
+        val splitline = line.split(Regex("\\s+"))
         val path = splitline[1]
         it.readLine()
         val userAgent = it.readLine()
