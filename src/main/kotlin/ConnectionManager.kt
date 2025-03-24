@@ -1,10 +1,11 @@
 import java.net.ServerSocket
 import java.net.Socket
+import kotlin.concurrent.thread
 
 class ConnectionManager {
 
     // register a socket connection
-    private val clientConnections = mutableListOf<Socket>()
+//    private val clientConnections = mutableListOf<Socket>()
 
     private val serverSocket = ServerSocket(4221).apply {
         reuseAddress = true
@@ -14,7 +15,9 @@ class ConnectionManager {
     fun run() {
         while (true) {
             val clientSocket = serverSocket.accept()
-            clientConnections.add(clientSocket)
+            thread {
+                RequestHandler(clientSocket).handle()
+            }
         }
     }
 }
@@ -45,7 +48,6 @@ class RequestHandler(
         inputStream.bufferedReader().use {
             var line: String? = it.readLine()
             val list = mutableListOf<String>()
-            println(line)
             while (line != null && list.size < 4) {
                 list.add(line)
                 line = it.readLine()
