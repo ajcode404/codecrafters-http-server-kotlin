@@ -1,5 +1,6 @@
+import java.io.InputStream
+import java.io.OutputStream
 import java.net.ServerSocket
-import java.net.Socket
 import kotlin.concurrent.thread
 
 class ConnectionManager {
@@ -14,56 +15,56 @@ class ConnectionManager {
         while (true) {
             val clientSocket = serverSocket.accept()
             thread {
-                val handler = RequestHandler(clientSocket)
-                val response = handler.handle()
-                val os = handler.clientSocket.outputStream
-                os.write(response.toByteArray())
-                os.flush()
-                os.close()
-                println(response)
+                val handler = RequestHandler(clientSocket.inputStream, clientSocket.outputStream)
+                handler.handle()
             }
         }
     }
 }
 
 data class Request(
-    val lines: List<String>,
-    val size: Int = lines.size
+    val lines: List<String>
 ) {
     fun getPath(): String {
-        if (size < 1) throw IllegalStateException("No path exist")
-        return lines[0].split(Regex("\\s+"))[1]
+        println(lines[0])
+        return lines[0].split(Regex(" "))[1]
     }
 
+    fun isEmpty() = lines.isEmpty()
+
     fun getUserAgent(): String {
-        if (size < 3) throw IllegalStateException("User Agent not found")
+        if (lines.size < 3) throw IllegalStateException("User Agent not found")
         return lines[2]
     }
 }
 
 class RequestHandler(
-    val clientSocket: Socket
+    private val inputStream: InputStream,
+    private val outputStream: OutputStream
 ) {
 
-    fun handle(): String {
-        clientSocket.inputStream.bufferedReader().use {
-            var line: String? = it.readLine()
-            val list = mutableListOf<String>()
-            while (line != null && list.size < 4) {
-                list.add(line)
-                line = it.readLine()
-            }
-            val request = Request(list)
-            return handleResponse(request)
+    fun handle() {
+        val br = inputStream.bufferedReader()
+        var line: String? = br.readLine()
+        val list = mutableListOf<String>()
+        while (!line.isNullOrEmpty()) {
+            list.add(line)
+            line = br.readLine()
         }
+        val request = Request(list)
+        handleResponse(request)
     }
 
-    private fun handleResponse(request: Request): String {
+    private fun handleResponse(request: Request) {
+        println("Fifth log $request")
+        if (request.isEmpty()) {
+            return
+        }
         val path = request.getPath()
-        // println("path = $path")
+        println("path = $path")
         val resp = when {
             path == "/"  -> {
-                // println("Hit here")
+                 println("Hit here")
                 "HTTP/1.1 200 OK\r\n\r\n"
             }
             path.startsWith("/echo/") -> {
@@ -80,6 +81,8 @@ class RequestHandler(
             }
             else -> "${HttpCodes.HTTP_404}$CRLF_CONST$CRLF_CONST"
         }
-        return resp
+        outputStream.write(resp.toByteArray())
+        outputStream.flush()
+        outputStream.close()
     }
 }
