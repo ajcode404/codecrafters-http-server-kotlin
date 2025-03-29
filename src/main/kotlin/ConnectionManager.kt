@@ -20,26 +20,36 @@ class ConnectionManager(
         while (true) {
             val clientSocket = serverSocket.accept()
             thread {
-                val handler = RequestHandler(clientSocket,commands)
+                val handler = RequestHandler(clientSocket, commands)
                 handler.handle()
             }
         }
     }
 }
 
+
+enum class RequestConstant(val index: Int) {
+    PATH(0),
+    USER_AGENT(2)
+}
+
 data class Request(
     val lines: List<String>
 ) {
+
     fun getPath(): String {
-        println(lines[0])
-        return lines[0].split(Regex(" "))[1]
+        return getValue(RequestConstant.PATH)
     }
 
-    fun isEmpty() = lines.isEmpty()
-
     fun getUserAgent(): String {
-        if (lines.size < 3) throw IllegalStateException("User Agent not found")
-        return lines[2]
+        return getValue(RequestConstant.USER_AGENT)
+    }
+
+    private fun getValue(requestConstant: RequestConstant): String {
+        if (lines.size > requestConstant.index) {
+            return lines[requestConstant.index]
+        }
+        throw IllegalStateException("${requestConstant.name} not found")
     }
 }
 
@@ -63,9 +73,6 @@ class RequestHandler(
     }
 
     private fun handleResponse(request: Request) {
-        if (request.isEmpty()) {
-            return
-        }
         val path = request.getPath()
         val resp: ByteArray = when {
             path == "/"  -> {
