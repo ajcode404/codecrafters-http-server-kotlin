@@ -30,9 +30,13 @@ internal fun StringBuilder.requestBodyString(
     append(body)
 }
 
-internal fun readFile(fileName: String): File? {
+data class FileMetadata(
+    val fileData: String
+)
+
+internal fun readFile(fileName: String): FileMetadata? {
     return runCatching {
-        File(fileName)
+        FileMetadata(File(fileName).readText(Charsets.UTF_8))
     }.fold(
         onSuccess = {
             it

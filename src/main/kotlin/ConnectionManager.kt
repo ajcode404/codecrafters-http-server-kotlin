@@ -88,10 +88,9 @@ class RequestHandler(
                 val fileName = path.substringAfter("/files/")
                 val file = readFile("${cmd.directory}/$fileName")
                 if (file != null) {
-                    val data = file.readText(Charsets.UTF_8)
                     buildString {
                         requestBodyString(
-                            body = data,
+                            body = file.fileData,
                             contentType = ContentType.OCTET_STREAM
                         )
                     }.toByteArray()
