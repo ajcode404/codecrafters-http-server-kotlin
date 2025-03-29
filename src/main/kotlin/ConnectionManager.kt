@@ -69,7 +69,7 @@ class RequestHandler(
         val path = request.getPath()
         val resp: ByteArray = when {
             path == "/"  -> {
-                HttpCodes.HTTP_200.toByteArray()
+                HttpCodes.HTTP_200_WITH_CRLF.toByteArray()
             }
             path.startsWith("/echo/") -> {
                 val str = path.substringAfter("/echo/")
@@ -104,7 +104,6 @@ class RequestHandler(
             }
             else -> HttpCodes.HTTP_404.toByteArray()
         }
-
         outputStream.write(resp)
         outputStream.flush()
         outputStream.close()

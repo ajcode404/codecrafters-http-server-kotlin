@@ -3,7 +3,8 @@ import java.io.File
 const val CRLF_CONST = "\r\n"
 
 object HttpCodes {
-    const val HTTP_200 =  "HTTP/1.1 200 OK$CRLF_CONST$CRLF_CONST"
+    const val HTTP_200_WITHOUT_CRLF =  "HTTP/1.1 200 OK"
+    const val HTTP_200_WITH_CRLF =  "$HTTP_200_WITHOUT_CRLF$CRLF_CONST$CRLF_CONST"
     const val HTTP_404 =  "HTTP/1.1 404 Not Found$CRLF_CONST$CRLF_CONST"
 }
 
@@ -22,7 +23,7 @@ internal fun StringBuilder.requestBodyString(
     contentType: ContentType = ContentType.TEXT_PLAIN
 ) {
     // Request Line
-    append(HttpCodes.HTTP_200).append(CRLF_CONST)
+    append(HttpCodes.HTTP_200_WITHOUT_CRLF).append(CRLF_CONST)
     // Headers
     append(HttpHeader.contentType(contentType)).append(CRLF_CONST)
     append(HttpHeader.contentLength(body)).append(CRLF_CONST).append(CRLF_CONST)
