@@ -5,6 +5,7 @@ const val CRLF_CONST = "\r\n"
 object HttpCodes {
     const val HTTP_200_WITHOUT_CRLF =  "HTTP/1.1 200 OK"
     const val HTTP_200_WITH_CRLF =  "$HTTP_200_WITHOUT_CRLF$CRLF_CONST$CRLF_CONST"
+    const val HTTP_201 = "HTTP/1.1 201 Created$CRLF_CONST${CRLF_CONST}"
     const val HTTP_404 =  "HTTP/1.1 404 Not Found$CRLF_CONST$CRLF_CONST"
 }
 
@@ -47,4 +48,11 @@ internal fun readFile(fileName: String): FileMetadata? {
             null
         }
     )
+}
+
+internal fun writeFile(fileName: String, text: String) {
+    runCatching {
+        val file = File(fileName)
+        file.writeText(text)
+    }
 }

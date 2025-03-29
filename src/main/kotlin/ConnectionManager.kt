@@ -1,4 +1,4 @@
-import java.io.InputStream
+import java.io.BufferedReader
 import java.io.OutputStream
 import java.net.ServerSocket
 import java.net.Socket
@@ -6,7 +6,7 @@ import kotlin.concurrent.thread
 
 class ConnectionManager(
     port: Int,
-    val commands: List<Command>
+    private val commands: List<Command>
 ) {
     private var serverSocket = ServerSocket(port)
 
@@ -30,7 +30,7 @@ class ConnectionManager(
 
 enum class RequestConstant(val index: Int) {
     PATH(0),
-    USER_AGENT(2)
+    USER_AGENT(2),
 }
 
 data class Request(
@@ -45,6 +45,15 @@ data class Request(
         return getValue(RequestConstant.USER_AGENT)
     }
 
+    fun contentLength(): Int {
+        for (line in lines) {
+            if (line.startsWith("Content-Length: ")) {
+                return line.substringAfter("Content-Length: ").toInt()
+            }
+        }
+        throw IllegalStateException("Content-Length not found")
+    }
+
     private fun getValue(requestConstant: RequestConstant): String {
         if (lines.size > requestConstant.index) {
             return lines[requestConstant.index]
@@ -57,11 +66,10 @@ class RequestHandler(
     clientSocket: Socket,
     private val commands: List<Command>
 ) {
-    private val inputStream: InputStream = clientSocket.getInputStream()
+    private val br: BufferedReader = clientSocket.getInputStream().bufferedReader()
     private val outputStream: OutputStream = clientSocket.getOutputStream()
 
     fun handle() {
-        val br = inputStream.bufferedReader()
         var line: String? = br.readLine()
         val list = mutableListOf<String>()
         while (!line.isNullOrEmpty()) {
@@ -69,24 +77,25 @@ class RequestHandler(
             line = br.readLine()
         }
         val request = Request(list)
+        println("request = $request")
         handleResponse(request)
     }
 
     private fun handleResponse(request: Request) {
         val path = request.getPath()
         val resp: ByteArray = when {
-            path == "/"  -> {
+            path.startsWith("GET / ")  -> {
                 HttpCodes.HTTP_200_WITH_CRLF.toByteArray()
             }
-            path.startsWith("/echo/") -> {
-                val str = path.substringAfter("/echo/")
+            path.startsWith("GET /echo/") -> {
+                val str = path.substringAfter("GET /echo/").substringBefore(" HTTP/1.1")
                 buildString {
                     requestBodyString(str)
                 }.also {
                     println("echo_body: $it")
                 }.toByteArray()
             }
-            path.startsWith("/user-agent") -> {
+            path.startsWith("GET /user-agent") -> {
                 val str = request.getUserAgent().split(": ")[1]
                 buildString {
                     requestBodyString(str)
@@ -94,9 +103,9 @@ class RequestHandler(
                     println("user-agent_body: $it")
                 }.toByteArray()
             }
-            path.startsWith("/files/") -> {
+            path.startsWith("GET /files/") -> {
                 val cmd = commands[0] as Command.Directory
-                val fileName = path.substringAfter("/files/")
+                val fileName = path.substringAfter("GET /files/").substringBefore(" HTTP/1.1")
                 val file = readFile("${cmd.directory}/$fileName")
                 if (file != null) {
                     buildString {
@@ -104,10 +113,24 @@ class RequestHandler(
                             body = file.fileData,
                             contentType = ContentType.OCTET_STREAM
                         )
+                    }.also {
+                        println("files-body: $it")
                     }.toByteArray()
                 } else {
                     HttpCodes.HTTP_404.toByteArray()
                 }
+            }
+            path.startsWith("POST /files/") -> {
+                val cmd = commands[0] as Command.Directory
+                val fileName = path.substringAfter("POST /files/").substringBefore(" HTTP/1.1")
+                val contentLength = request.contentLength()
+                val body = CharArray(contentLength)
+
+                if (contentLength > 0) {
+                    br.read(body, 0, contentLength)
+                }
+                writeFile("${cmd.directory}/$fileName", buildString { append(body) })
+                HttpCodes.HTTP_201.toByteArray()
             }
             else -> HttpCodes.HTTP_404.toByteArray()
         }
