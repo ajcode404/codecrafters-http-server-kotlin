@@ -1,10 +1,15 @@
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.ServerSocket
+import java.net.Socket
 import kotlin.concurrent.thread
 
-class ConnectionManager {
-    private var serverSocket = ServerSocket(4221)
+class ConnectionManager(
+    port: Int,
+    val commands: List<Command>
+) {
+    private var serverSocket = ServerSocket(port)
+
     init {
         serverSocket.reuseAddress = true
         serverSocket.receiveBufferSize
@@ -15,7 +20,7 @@ class ConnectionManager {
         while (true) {
             val clientSocket = serverSocket.accept()
             thread {
-                val handler = RequestHandler(clientSocket.inputStream, clientSocket.outputStream)
+                val handler = RequestHandler(clientSocket,commands)
                 handler.handle()
             }
         }
@@ -39,9 +44,11 @@ data class Request(
 }
 
 class RequestHandler(
-    private val inputStream: InputStream,
-    private val outputStream: OutputStream
+    clientSocket: Socket,
+    private val commands: List<Command>
 ) {
+    private val inputStream: InputStream = clientSocket.getInputStream()
+    private val outputStream: OutputStream = clientSocket.getOutputStream()
 
     fun handle() {
         val br = inputStream.bufferedReader()
@@ -56,32 +63,46 @@ class RequestHandler(
     }
 
     private fun handleResponse(request: Request) {
-        println("Fifth log $request")
         if (request.isEmpty()) {
             return
         }
         val path = request.getPath()
-        println("path = $path")
-        val resp = when {
+        val resp: ByteArray = when {
             path == "/"  -> {
-                 println("Hit here")
-                "HTTP/1.1 200 OK\r\n\r\n"
+                "HTTP/1.1 200 OK\r\n\r\n".toByteArray()
             }
             path.startsWith("/echo/") -> {
                 val str = path.substringAfter("/echo/")
                 buildString {
                     requestBodyString(str)
-                }
+                }.toByteArray()
             }
             path.startsWith("/user-agent") -> {
                 val str = request.getUserAgent().split(": ")[1]
                 buildString {
                     requestBodyString(str)
+                }.toByteArray()
+            }
+            path.startsWith("/files/") -> {
+                val cmd = commands[0] as Command.Directory
+                val fileName = path.substringAfter("/files/")
+                val file = readFile("${cmd.directory}/$fileName")
+                if (file != null) {
+                    val data = file.readText(Charsets.UTF_8)
+                    buildString {
+                        requestBodyString(
+                            body = data,
+                            contentType = ContentType.OCTET_STREAM
+                        )
+                    }.toByteArray()
+                } else {
+                    HttpCodes.HTTP_404.toByteArray()
                 }
             }
-            else -> "${HttpCodes.HTTP_404}$CRLF_CONST$CRLF_CONST"
+            else -> HttpCodes.HTTP_404.toByteArray()
         }
-        outputStream.write(resp.toByteArray())
+
+        outputStream.write(resp)
         outputStream.flush()
         outputStream.close()
     }
