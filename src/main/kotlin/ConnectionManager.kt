@@ -69,18 +69,22 @@ class RequestHandler(
         val path = request.getPath()
         val resp: ByteArray = when {
             path == "/"  -> {
-                "HTTP/1.1 200 OK\r\n\r\n".toByteArray()
+                HttpCodes.HTTP_200.toByteArray()
             }
             path.startsWith("/echo/") -> {
                 val str = path.substringAfter("/echo/")
                 buildString {
                     requestBodyString(str)
+                }.also {
+                    println("echo_body: $it")
                 }.toByteArray()
             }
             path.startsWith("/user-agent") -> {
                 val str = request.getUserAgent().split(": ")[1]
                 buildString {
                     requestBodyString(str)
+                }.also {
+                    println("user-agent_body: $it")
                 }.toByteArray()
             }
             path.startsWith("/files/") -> {
