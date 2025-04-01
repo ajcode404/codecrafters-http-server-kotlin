@@ -20,7 +20,8 @@ data class Request(
     }
 
     fun isSupportedEncoding(): Boolean {
-        return getValue("Accept-Encoding") in supportedEncoding
+        if (headers["Accept-Encoding"] != null) return headers["Accept-Encoding"] in supportedEncoding
+        return false
     }
 
     private fun getValue(key: String): String {
