@@ -27,38 +27,61 @@ class ConnectionManager(
     }
 }
 
+data class Header(
+    val name: String,
+    val value: String
+)
 
-enum class RequestConstant(val index: Int) {
-    PATH(0),
-    USER_AGENT(2),
+data class Path(
+    val verb: String,
+    val route: String,
+    val httpVersion: String
+) {
+    companion object {
+        fun create(path: String): Path {
+            val (verb, route, httpVersion) = path.split(" ")
+            return Path(verb, route, httpVersion)
+        }
+    }
+
+    fun isVerbGet(): Boolean = "GET" == verb
+
+    fun isVerbPost(): Boolean = "POST" == verb
+
+    override fun toString()
+        ="$verb $route $httpVersion"
+}
+
+private fun generateHeaders(lines: List<String>): Map<String, String?> {
+    return lines.drop(1).mapNotNull { line ->
+        val arr = line.split(": ", limit = 2)
+        if (arr.size == 2) arr[0] to arr[1] else null
+    }.associate { it }
 }
 
 data class Request(
-    val lines: List<String>
+    val path: Path,
+    val headers: Map<String, String?>
 ) {
 
+    constructor(lines: List<String>) :
+            this(Path.create(lines.first()), generateHeaders(lines))
+
     fun getPath(): String {
-        return getValue(RequestConstant.PATH)
+        return path.toString()
     }
 
     fun getUserAgent(): String {
-        return getValue(RequestConstant.USER_AGENT)
+        return getValue("User-Agent")
     }
+
 
     fun contentLength(): Int {
-        for (line in lines) {
-            if (line.startsWith("Content-Length: ")) {
-                return line.substringAfter("Content-Length: ").toInt()
-            }
-        }
-        throw IllegalStateException("Content-Length not found")
+        return getValue("Content-Length").toInt()
     }
 
-    private fun getValue(requestConstant: RequestConstant): String {
-        if (lines.size > requestConstant.index) {
-            return lines[requestConstant.index]
-        }
-        throw IllegalStateException("${requestConstant.name} not found")
+    private fun getValue(key: String): String {
+        return headers[key] ?: throw IllegalStateException("$key not found")
     }
 }
 
@@ -82,30 +105,34 @@ class RequestHandler(
     }
 
     private fun handleResponse(request: Request) {
-        val path = request.getPath()
+        val path = request.path
         val resp: ByteArray = when {
-            path.startsWith("GET / ")  -> {
+
+            path.isVerbGet() && path.route == "/" -> {
                 HttpCodes.HTTP_200_WITH_CRLF.toByteArray()
             }
-            path.startsWith("GET /echo/") -> {
-                val str = path.substringAfter("GET /echo/").substringBefore(" HTTP/1.1")
+
+            path.isVerbGet() && path.route.startsWith("/echo/") -> {
+                val str = path.route.substringAfter("/echo/")
                 buildString {
                     requestBodyString(str)
                 }.also {
                     println("echo_body: $it")
                 }.toByteArray()
             }
-            path.startsWith("GET /user-agent") -> {
-                val str = request.getUserAgent().split(": ")[1]
+
+            path.isVerbGet() && path.route.startsWith("/user-agent") -> {
+                val str = request.getUserAgent()
                 buildString {
                     requestBodyString(str)
                 }.also {
                     println("user-agent_body: $it")
                 }.toByteArray()
             }
-            path.startsWith("GET /files/") -> {
+
+            path.isVerbGet() && path.route.startsWith("/files/") -> {
                 val cmd = commands[0] as Command.Directory
-                val fileName = path.substringAfter("GET /files/").substringBefore(" HTTP/1.1")
+                val fileName = path.route.substringAfter("/files/")
                 val file = readFile("${cmd.directory}/$fileName")
                 if (file != null) {
                     buildString {
@@ -120,9 +147,10 @@ class RequestHandler(
                     HttpCodes.HTTP_404.toByteArray()
                 }
             }
-            path.startsWith("POST /files/") -> {
+
+            path.isVerbPost() && path.route.startsWith("/files/") -> {
                 val cmd = commands[0] as Command.Directory
-                val fileName = path.substringAfter("POST /files/").substringBefore(" HTTP/1.1")
+                val fileName = path.route.substringAfter("/files/")
                 val contentLength = request.contentLength()
                 val body = CharArray(contentLength)
 
@@ -132,6 +160,7 @@ class RequestHandler(
                 writeFile("${cmd.directory}/$fileName", buildString { append(body) })
                 HttpCodes.HTTP_201.toByteArray()
             }
+
             else -> HttpCodes.HTTP_404.toByteArray()
         }
         outputStream.write(resp)
