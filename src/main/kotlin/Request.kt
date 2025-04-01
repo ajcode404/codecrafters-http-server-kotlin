@@ -1,4 +1,4 @@
-private val supportedEncoding: Set<String> = setOf("gzip")
+private val supportedEncoding: Set<String>  = setOf("gzip")
 
 data class Request(
     val path: Path,
@@ -20,7 +20,12 @@ data class Request(
     }
 
     fun isSupportedEncoding(): Boolean {
-        if (headers["Accept-Encoding"] != null) return headers["Accept-Encoding"] in supportedEncoding
+        val encodings = headers["Accept-Encoding"] ?: return false
+        encodings.split(", ").forEach {
+            if (it in supportedEncoding) {
+                return true
+            }
+        }
         return false
     }
 
