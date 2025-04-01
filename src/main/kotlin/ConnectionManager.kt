@@ -10,7 +10,6 @@ class ConnectionManager(
     init {
         serverSocket.reuseAddress = true
         serverSocket.receiveBufferSize
-
     }
 
     fun run() {
@@ -23,4 +22,3 @@ class ConnectionManager(
         }
     }
 }
-

@@ -5,6 +5,8 @@ data class Request(
     constructor(lines: List<String>) :
             this(Path.create(lines.first()), generateHeaders(lines))
 
+    private val supportedEncoding: Set<String> = setOf("gzip")
+
     fun getPath(): String {
         return path.toString()
     }
@@ -15,6 +17,10 @@ data class Request(
 
     fun contentLength(): Int {
         return getValue("Content-Length").toInt()
+    }
+
+    fun isSupportedEncoding(): Boolean {
+        return getValue("Content-Encoding") in supportedEncoding
     }
 
     private fun getValue(key: String): String {

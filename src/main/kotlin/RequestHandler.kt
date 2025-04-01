@@ -23,28 +23,24 @@ class RequestHandler(
 
     private fun handleResponse(request: Request) {
         val path = request.path
-        val resp: ByteArray = when {
+        val resp: String = when {
 
-            path.isVerbGet() && path.route == "/" -> {
-                HttpCodes.HTTP_200_WITH_CRLF.toByteArray()
-            }
+            path.isVerbGet() && path.route == "/" -> requestBodyString()
 
             path.isVerbGet() && path.route.startsWith("/echo/") -> {
                 val str = path.route.substringAfter("/echo/")
-                buildString {
-                    requestBodyString(str)
-                }.also {
+                requestBodyString(
+                    body = str
+                ).also {
                     println("echo_body: $it")
-                }.toByteArray()
+                }
             }
 
             path.isVerbGet() && path.route.startsWith("/user-agent") -> {
                 val str = request.getUserAgent()
-                buildString {
-                    requestBodyString(str)
-                }.also {
+                requestBodyString(body = str).also {
                     println("user-agent_body: $it")
-                }.toByteArray()
+                }
             }
 
             path.isVerbGet() && path.route.startsWith("/files/") -> {
@@ -52,16 +48,18 @@ class RequestHandler(
                 val fileName = path.route.substringAfter("/files/")
                 val file = readFile("${cmd.directory}/$fileName")
                 if (file != null) {
-                    buildString {
-                        requestBodyString(
-                            body = file.fileData,
-                            contentType = ContentType.OCTET_STREAM
-                        )
-                    }.also {
+                    requestBodyString(
+                        body = file.fileData,
+                        headers = defaultHeaders(file.fileData).also {
+                            it["Content-Type"] = ContentType.OCTET_STREAM.value
+                        }
+                    ).also {
                         println("files-body: $it")
-                    }.toByteArray()
+                    }
                 } else {
-                    HttpCodes.HTTP_404.toByteArray()
+                    requestBodyString(
+                        httpCode = HttpCodes.HTTP_404
+                    )
                 }
             }
 
@@ -75,12 +73,14 @@ class RequestHandler(
                     br.read(body, 0, contentLength)
                 }
                 writeFile("${cmd.directory}/$fileName", buildString { append(body) })
-                HttpCodes.HTTP_201.toByteArray()
+                requestBodyString(
+                    httpCode = HttpCodes.HTTP_201
+                )
             }
 
-            else -> HttpCodes.HTTP_404.toByteArray()
+            else -> requestBodyString(httpCode = HttpCodes.HTTP_404)
         }
-        outputStream.write(resp)
+        outputStream.write(resp.toByteArray())
         outputStream.flush()
         outputStream.close()
     }

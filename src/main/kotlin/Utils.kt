@@ -2,11 +2,10 @@ import java.io.File
 
 const val CRLF_CONST = "\r\n"
 
-object HttpCodes {
-    const val HTTP_200_WITHOUT_CRLF =  "HTTP/1.1 200 OK"
-    const val HTTP_200_WITH_CRLF =  "$HTTP_200_WITHOUT_CRLF$CRLF_CONST$CRLF_CONST"
-    const val HTTP_201 = "HTTP/1.1 201 Created$CRLF_CONST${CRLF_CONST}"
-    const val HTTP_404 =  "HTTP/1.1 404 Not Found$CRLF_CONST$CRLF_CONST"
+enum class HttpCodes(val value: String) {
+    HTTP_200("HTTP/1.1 200 OK"),
+    HTTP_201("HTTP/1.1 201 Created"),
+    HTTP_404("HTTP/1.1 404 Not Found")
 }
 
 enum class ContentType(val value: String) {
@@ -15,21 +14,37 @@ enum class ContentType(val value: String) {
 }
 
 object HttpHeader {
-    fun contentLength(str: String) = "Content-Length: ${str.length}"
-    fun contentType(contentType: ContentType) = "Content-Type: ${contentType.value}"
+    fun format(key: String, value: String) = "$key: $value"
 }
 
-internal fun StringBuilder.requestBodyString(
-    body: String,
-    contentType: ContentType = ContentType.TEXT_PLAIN
-) {
-    // Request Line
-    append(HttpCodes.HTTP_200_WITHOUT_CRLF).append(CRLF_CONST)
-    // Headers
-    append(HttpHeader.contentType(contentType)).append(CRLF_CONST)
-    append(HttpHeader.contentLength(body)).append(CRLF_CONST).append(CRLF_CONST)
-    // Request Body
-    append(body)
+internal fun defaultHeaders(body: String?): MutableMap<String, String> {
+    return mutableMapOf(
+        "Content-Type" to ContentType.TEXT_PLAIN.value
+    ).also {
+        if (body != null) {
+            it["Content-Length"] = body.length.toString()
+        }
+    }
+}
+
+internal fun requestBodyString(
+    httpCode: HttpCodes = HttpCodes.HTTP_200,
+    body: String? = null,
+    headers: Map<String, String> = defaultHeaders(body)
+): String {
+    return buildString {
+        // Request Line
+        append(httpCode.value).append(CRLF_CONST)
+
+        // Headers
+        headers.forEach {
+            append(HttpHeader.format(it.key, it.value)).append(CRLF_CONST)
+        }
+
+        // Request Body
+        append(CRLF_CONST)
+        if (body != null) append(body)
+    }
 }
 
 data class FileMetadata(
