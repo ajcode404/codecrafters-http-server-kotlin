@@ -23,13 +23,13 @@ class RequestHandler(
 
     private fun handleResponse(request: Request) {
         val path = request.path
-        val resp: String = when {
+        val resp: RequestBodyString = when {
 
-            path.isVerbGet() && path.route == "/" -> requestBodyString()
+            path.isVerbGet() && path.route == "/" -> RequestBodyString()
 
             path.isVerbGet() && path.route.startsWith("/echo/") -> {
                 val str = path.route.substringAfter("/echo/")
-                requestBodyString(
+                RequestBodyString(
                     body = str
                 ).also {
                     println("echo_body: $it")
@@ -38,7 +38,7 @@ class RequestHandler(
 
             path.isVerbGet() && path.route.startsWith("/user-agent") -> {
                 val str = request.getUserAgent()
-                requestBodyString(body = str).also {
+                RequestBodyString(body = str).also {
                     println("user-agent_body: $it")
                 }
             }
@@ -48,7 +48,7 @@ class RequestHandler(
                 val fileName = path.route.substringAfter("/files/")
                 val file = readFile("${cmd.directory}/$fileName")
                 if (file != null) {
-                    requestBodyString(
+                    RequestBodyString(
                         body = file.fileData,
                         headers = defaultHeaders(file.fileData).also {
                             it["Content-Type"] = ContentType.OCTET_STREAM.value
@@ -57,7 +57,7 @@ class RequestHandler(
                         println("files-body: $it")
                     }
                 } else {
-                    requestBodyString(
+                    RequestBodyString(
                         httpCode = HttpCodes.HTTP_404
                     )
                 }
@@ -73,14 +73,17 @@ class RequestHandler(
                     br.read(body, 0, contentLength)
                 }
                 writeFile("${cmd.directory}/$fileName", buildString { append(body) })
-                requestBodyString(
+                RequestBodyString(
                     httpCode = HttpCodes.HTTP_201
                 )
             }
 
-            else -> requestBodyString(httpCode = HttpCodes.HTTP_404)
+            else -> RequestBodyString(httpCode = HttpCodes.HTTP_404)
         }
-        outputStream.write(resp.toByteArray())
+        if (request.isSupportedEncoding()) {
+            resp.addHeader("Content-Encoding", "gzip")
+        }
+        outputStream.write(resp.toString().toByteArray())
         outputStream.flush()
         outputStream.close()
     }

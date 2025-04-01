@@ -27,23 +27,30 @@ internal fun defaultHeaders(body: String?): MutableMap<String, String> {
     }
 }
 
-internal fun requestBodyString(
-    httpCode: HttpCodes = HttpCodes.HTTP_200,
-    body: String? = null,
-    headers: Map<String, String> = defaultHeaders(body)
-): String {
-    return buildString {
-        // Request Line
-        append(httpCode.value).append(CRLF_CONST)
+internal class RequestBodyString(
+    private val httpCode: HttpCodes = HttpCodes.HTTP_200,
+    private val body: String? = null,
+    private val headers: MutableMap<String, String> = defaultHeaders(body)
+) {
 
-        // Headers
-        headers.forEach {
-            append(HttpHeader.format(it.key, it.value)).append(CRLF_CONST)
+    override fun toString(): String {
+        return buildString {
+            // Request Line
+            append(httpCode.value).append(CRLF_CONST)
+
+            // Headers
+            headers.forEach {
+                append(HttpHeader.format(it.key, it.value)).append(CRLF_CONST)
+            }
+
+            // Request Body
+            append(CRLF_CONST)
+            if (body != null) append(body)
         }
+    }
 
-        // Request Body
-        append(CRLF_CONST)
-        if (body != null) append(body)
+    fun addHeader(key: String, value: String) {
+        headers[key] = value
     }
 }
 

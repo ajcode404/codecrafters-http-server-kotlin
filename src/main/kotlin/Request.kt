@@ -1,11 +1,11 @@
+private val supportedEncoding: Set<String> = setOf("gzip")
+
 data class Request(
     val path: Path,
     val headers: Map<String, String?>
 ) {
     constructor(lines: List<String>) :
             this(Path.create(lines.first()), generateHeaders(lines))
-
-    private val supportedEncoding: Set<String> = setOf("gzip")
 
     fun getPath(): String {
         return path.toString()
@@ -20,7 +20,7 @@ data class Request(
     }
 
     fun isSupportedEncoding(): Boolean {
-        return getValue("Content-Encoding") in supportedEncoding
+        return getValue("Accept-Encoding") in supportedEncoding
     }
 
     private fun getValue(key: String): String {
