@@ -82,9 +82,12 @@ class RequestHandler(
         }
         if (request.isSupportedEncoding()) {
             resp.addHeader("Content-Encoding", "gzip")
+            outputStream.write(resp.toByteArray())
+        } else {
+            outputStream.write(resp.toString().toByteArray())
         }
-        outputStream.write(resp.toString().toByteArray())
         outputStream.flush()
         outputStream.close()
     }
 }
+

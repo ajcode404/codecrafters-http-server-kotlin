@@ -1,4 +1,6 @@
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.util.zip.GZIPOutputStream
 
 const val CRLF_CONST = "\r\n"
 
@@ -27,9 +29,9 @@ internal fun defaultHeaders(body: String?): MutableMap<String, String> {
     }
 }
 
-internal class RequestBodyString(
+data class RequestBodyString(
     private val httpCode: HttpCodes = HttpCodes.HTTP_200,
-    private val body: String? = null,
+    val body: String? = null,
     private val headers: MutableMap<String, String> = defaultHeaders(body)
 ) {
 
@@ -47,6 +49,28 @@ internal class RequestBodyString(
             append(CRLF_CONST)
             if (body != null) append(body)
         }
+    }
+
+    fun toByteArray(): ByteArray {
+        val compressedBody = compress(body)
+        headers["Content-Length"] = compressedBody?.size?.toString() ?: headers["Content-Length"]!!
+        var data = buildString {
+            // Request Line
+            append(httpCode.value).append(CRLF_CONST)
+
+            // Headers
+            headers.forEach {
+                append(HttpHeader.format(it.key, it.value)).append(CRLF_CONST)
+            }
+
+            // Request Body
+            append(CRLF_CONST)
+        }.toByteArray()
+        if (compressedBody != null) {
+            data += compressedBody
+            println("compressed body = ${compressedBody.size}")
+        }
+        return data
     }
 
     fun addHeader(key: String, value: String) {
@@ -77,4 +101,13 @@ internal fun writeFile(fileName: String, text: String) {
         val file = File(fileName)
         file.writeText(text)
     }
+}
+
+internal fun compress(data: String?): ByteArray? {
+    data ?: return null
+    val os = ByteArrayOutputStream()
+    val gzip = GZIPOutputStream(os)
+    gzip.write(data.toByteArray(Charsets.UTF_8))
+    gzip.close()
+    return os.toByteArray()
 }

@@ -21,12 +21,9 @@ data class Request(
 
     fun isSupportedEncoding(): Boolean {
         val encodings = headers["Accept-Encoding"] ?: return false
-        encodings.split(", ").forEach {
-            if (it in supportedEncoding) {
-                return true
-            }
+        return encodings.split(", ").any {
+            it in supportedEncoding
         }
-        return false
     }
 
     private fun getValue(key: String): String {
