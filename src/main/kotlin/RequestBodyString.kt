@@ -1,18 +1,16 @@
 data class RequestBodyString(
-    private val httpCode: HttpCodes = HttpCodes.HTTP_200,
+    private val httpCode: HttpCode = HttpCode.HTTP_200,
     val body: String? = null,
-    private val headers: MutableMap<String, String> = defaultHeaders(body)
+    private val headers: Header = Header.createWithDefault(body),
 ) {
 
     override fun toString(): String {
         return buildString {
             // Request Line
-            append(httpCode.value).append(CRLF_CONST)
+            append(httpCode.toString())
 
             // Headers
-            headers.forEach {
-                append(format(it.key, it.value)).append(CRLF_CONST)
-            }
+            append(headers.toString())
 
             // Request Body
             append(CRLF_CONST)
@@ -22,15 +20,14 @@ data class RequestBodyString(
 
     fun toByteArray(): ByteArray {
         val compressedBody = compress(body)
-        headers["Content-Length"] = compressedBody?.size?.toString() ?: headers["Content-Length"]!!
+        headers.setHeader(Header.HeaderConst.CONTENT_LENGTH, compressedBody?.size?.toString()
+            ?: headers.getValue(Header.HeaderConst.CONTENT_LENGTH))
         var data = buildString {
             // Request Line
             append(httpCode.value).append(CRLF_CONST)
 
             // Headers
-            headers.forEach {
-                append(format(it.key, it.value)).append(CRLF_CONST)
-            }
+            append(headers.toString())
 
             // Request Body
             append(CRLF_CONST)
@@ -42,9 +39,10 @@ data class RequestBodyString(
         return data
     }
 
-    fun addHeader(key: String, value: String) {
-        headers[key] = value
+    fun addHeader(key: Header.HeaderConst, value: String) {
+        headers.setHeader(key, value)
     }
 
     private fun format(key: String, value: String) = "$key: $value"
 }
+

@@ -51,15 +51,15 @@ class RequestHandler(
                 if (file != null) {
                     RequestBodyString(
                         body = file,
-                        headers = defaultHeaders(file).also {
-                            it["Content-Type"] = ContentType.OCTET_STREAM.value
+                        headers = Header.createWithDefault(file).also {
+                            it.setHeader(Header.HeaderConst.CONTENT_TYPE, ContentType.OCTET_STREAM.value)
                         }
                     ).also {
                         println("files-body: $it")
                     }
                 } else {
                     RequestBodyString(
-                        httpCode = HttpCodes.HTTP_404
+                        httpCode = HttpCode.HTTP_404
                     )
                 }
             }
@@ -75,14 +75,14 @@ class RequestHandler(
                 }
                 writeFile("${cmd.directory}/$fileName", buildString { append(body) })
                 RequestBodyString(
-                    httpCode = HttpCodes.HTTP_201
+                    httpCode = HttpCode.HTTP_201
                 )
             }
 
-            else -> RequestBodyString(httpCode = HttpCodes.HTTP_404)
+            else -> RequestBodyString(httpCode = HttpCode.HTTP_404)
         }
         if (request.isSupportedEncoding()) {
-            resp.addHeader("Content-Encoding", "gzip")
+            resp.addHeader(Header.HeaderConst.CONTENT_ENCODING, "gzip")
             outputStream.write(resp.toByteArray())
         } else {
             outputStream.write(resp.toString().toByteArray())
