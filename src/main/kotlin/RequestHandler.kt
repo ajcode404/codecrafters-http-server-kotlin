@@ -1,4 +1,5 @@
 import java.io.BufferedReader
+import java.io.File
 import java.io.OutputStream
 import java.net.Socket
 
@@ -49,8 +50,8 @@ class RequestHandler(
                 val file = readFile("${cmd.directory}/$fileName")
                 if (file != null) {
                     RequestBodyString(
-                        body = file.fileData,
-                        headers = defaultHeaders(file.fileData).also {
+                        body = file,
+                        headers = defaultHeaders(file).also {
                             it["Content-Type"] = ContentType.OCTET_STREAM.value
                         }
                     ).also {
@@ -88,6 +89,27 @@ class RequestHandler(
         }
         outputStream.flush()
         outputStream.close()
+    }
+
+    private fun writeFile(fileName: String, text: String) {
+        runCatching {
+            val file = File(fileName)
+            file.writeText(text)
+        }
+    }
+
+    private fun readFile(fileName: String): String? {
+        return runCatching {
+            File(fileName).readText(Charsets.UTF_8)
+        }.fold(
+            onSuccess = {
+                it
+            },
+            onFailure = {
+                it.printStackTrace()
+                null
+            }
+        )
     }
 }
 
